@@ -2,16 +2,21 @@
 #include <python2.7/frameobject.h>
 #include <python2.7/longintrepr.h>
 
-struct PythonPrinter;
-typedef Elf::Addr (*python_printfunc)(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr);
+template <int PyV> struct PythonPrinter;
+
+template <int PyV>
+using python_printfunc = Elf::Addr (*)(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr);
+
+template <int PyV>
 struct PyPrinterEntry {
-    python_printfunc printer;
+    python_printfunc<PyV> printer;
     bool dupdetect;
-    PyPrinterEntry(python_printfunc, bool dupdetect);
+    PyPrinterEntry(python_printfunc<PyV>, bool dupdetect);
 };
 
+template <int PyV>
 struct PythonPrinter {
-    void addPrinter(const char *symbol, python_printfunc func, bool dupDetect);
+    void addPrinter(const char *symbol, python_printfunc<PyV> func, bool dupDetect);
     void print(Elf::Addr remoteAddr);
     std::map<Elf::Addr, PyTypeObject> types;
 
@@ -28,7 +33,7 @@ struct PythonPrinter {
     Elf::Addr interp_head;
     Elf::Object::sptr libpython;
     Elf::Addr libpythonAddr;
-    std::map<Elf::Addr, PyPrinterEntry> printers;
-    PyPrinterEntry *heapPrinter;
+    std::map<Elf::Addr, PyPrinterEntry<PyV>> printers;
+    PyPrinterEntry<PyV> *heapPrinter;
     const PstackOptions &options;
 };

@@ -279,7 +279,7 @@ mainExcept(int argc, char *argv[])
     off_t filesize = 0;
     off_t memsize = 0;
 #ifdef WITH_PYTHON
-    PythonPrinter py(*process, std::cout, PstackOptions());
+    PythonPrinter<2> py(*process, std::cout, PstackOptions());
 #endif
     for (auto &hdr : core->getSegments(PT_LOAD)) {
         Elf::Off p;

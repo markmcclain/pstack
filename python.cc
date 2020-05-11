@@ -36,7 +36,7 @@ pthreadTidOffset(const Process &proc, size_t *offsetp)
 }
 
 // This reimplements PyCode_Addr2Line
-static int
+template<int PyV> int
 getLine(const Reader &proc, const PyCodeObject *code, const PyFrameObject *frame)
 {
     PyVarObject lnotab;
@@ -58,8 +58,9 @@ getLine(const Reader &proc, const PyCodeObject *code, const PyFrameObject *frame
     return line;
 }
 
-static Elf::Addr
-heapPrint(const PyObject *, const PyTypeObject *pto, PythonPrinter *pc, Elf::Addr remote)
+template <int PyV>
+Elf::Addr
+heapPrint(const PyObject *, const PyTypeObject *pto, PythonPrinter<PyV> *pc, Elf::Addr remote)
 {
     pc->os << pc->proc.io->readString(Elf::Addr(pto->tp_name));
     if (pto->tp_dictoffset > 0) {
@@ -75,16 +76,18 @@ heapPrint(const PyObject *, const PyTypeObject *pto, PythonPrinter *pc, Elf::Add
     return 0;
 }
 
-static Elf::Addr
-stringPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template <int PyV>
+Elf::Addr
+stringPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto *pso = (const PyStringObject *)pyo;
     pc->os << "\"" << pso->ob_sval << "\"";
     return 0;
 }
 
-static Elf::Addr
-floatPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template <int PyV>
+Elf::Addr
+floatPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto *pfo = (const PyFloatObject *)pyo;
     pc->os << pfo->ob_fval;
@@ -92,31 +95,35 @@ floatPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Ad
 }
 
 
-static Elf::Addr
-intPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template <int PyV>
+Elf::Addr
+intPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto pio = (const PyIntObject *)pyo;
     pc->os << pio->ob_ival;
     return 0;
 }
 
-static Elf::Addr
-boolPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template <int PyV>
+Elf::Addr
+boolPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto pio = (const PyIntObject *)pyo;
     pc->os << (pio->ob_ival ? "True" : "False");
     return 0;
 }
 
-static Elf::Addr
-modulePrint(const PyObject *, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template<int PyV>
+Elf::Addr
+modulePrint(const PyObject *, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     pc->os << "<python module>";
     return 0;
 }
 
-static Elf::Addr
-listPrint(const PyObject *po, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template<int PyV>
+Elf::Addr
+listPrint(const PyObject *po, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto plo = reinterpret_cast<const PyListObject *>(po);
     pc->os << "list: \n";
@@ -135,8 +142,9 @@ listPrint(const PyObject *po, const PyTypeObject *, PythonPrinter *pc, Elf::Addr
     return 0;
 }
 
-static Elf::Addr
-classPrint(const PyObject *po, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template<int PyV>
+Elf::Addr
+classPrint(const PyObject *po, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto pco = reinterpret_cast<const PyClassObject *>(po);
     pc->os << "<class ";
@@ -145,14 +153,15 @@ classPrint(const PyObject *po, const PyTypeObject *, PythonPrinter *pc, Elf::Add
     return 0;
 }
 
-static Elf::Addr
-dictPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template<int PyV>
+Elf::Addr
+dictPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     PyDictObject *pdo = (PyDictObject *)pyo;
     if (pdo->ma_used == 0)
         return 0;
     for (Py_ssize_t i = 0; i < pdo->ma_mask && i < 50; ++i) {
-        PyDictEntry pde = pc->proc.io->readObj<PyDictEntry>(Elf::Addr(pdo->ma_table + i));
+        PyDictEntry pde = pc->proc.io->template readObj<PyDictEntry>(Elf::Addr(pdo->ma_table + i));
         if (pde.me_value == nullptr)
             continue;
         if (pde.me_key != nullptr) {
@@ -166,16 +175,17 @@ dictPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Add
     return 0;
 }
 
-static Elf::Addr
-typePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template <int PyV>
+Elf::Addr
+typePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto pto = (const _typeobject *)pyo;
     pc->os << "type :\"" << pc->proc.io->readString(Elf::Addr(pto->tp_name)) << "\"";
     return 0;
 }
 
-static Elf::Addr
-instancePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template <int PyV> Elf::Addr
+instancePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     const auto pio = reinterpret_cast<const PyInstanceObject *>(pyo);
     pc->depth++;
@@ -191,8 +201,8 @@ instancePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf:
     return 0;
 }
 
-static Elf::Addr
-longPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr)
+template <int PyV> Elf::Addr
+longPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr)
 {
     auto plo = (PyLongObject *)pyo;
     intmax_t value = 0;
@@ -203,10 +213,11 @@ longPrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Add
     return 0;
 }
 
-static int
-printTupleVars(PythonPrinter *pc, Elf::Addr namesAddr, Elf::Addr valuesAddr, const char *type, Py_ssize_t maxvals = 1000000)
+template <int PyV>
+int
+printTupleVars(PythonPrinter<PyV> *pc, Elf::Addr namesAddr, Elf::Addr valuesAddr, const char *type, Py_ssize_t maxvals = 1000000)
 {
-    const auto &names = pc->proc.io->readObj<PyTupleObject>(namesAddr);
+    const auto &names = pc->proc.io->template readObj<PyTupleObject>(namesAddr);
 
     maxvals = std::min(names.ob_size, maxvals);
     if (maxvals == 0)
@@ -232,13 +243,14 @@ printTupleVars(PythonPrinter *pc, Elf::Addr namesAddr, Elf::Addr valuesAddr, con
 
 }
 
-static Elf::Addr
-framePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Addr remoteAddr)
+template <int PyV>
+Elf::Addr
+framePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter<PyV> *pc, Elf::Addr remoteAddr)
 {
     auto pfo = (const PyFrameObject *)pyo;
     if (pfo->f_code != 0) {
-        const auto &code = pc->proc.io->readObj<PyCodeObject>(Elf::Addr(pfo->f_code));
-        auto lineNo = getLine(*pc->proc.io, &code, pfo);
+        const auto &code = pc->proc.io->template readObj<PyCodeObject>(Elf::Addr(pfo->f_code));
+        auto lineNo = getLine<PyV>(*pc->proc.io, &code, pfo);
         auto func = pc->proc.io->readString(Elf::Addr(code.co_name) + offsetof(PyStringObject, ob_sval));
         auto file = pc->proc.io->readString(Elf::Addr(code.co_filename) + offsetof(PyStringObject, ob_sval));
         pc->os << pc->prefix() << func << " in " << file << ":" << lineNo << "\n";
@@ -271,8 +283,9 @@ framePrint(const PyObject *pyo, const PyTypeObject *, PythonPrinter *pc, Elf::Ad
     return Elf::Addr(pfo->f_back);
 }
 
+template <int PyV>
 const char *
-PythonPrinter::prefix() const
+PythonPrinter<PyV>::prefix() const
 {
     static const char spaces[] =
         "                                           "
@@ -285,14 +298,16 @@ PythonPrinter::prefix() const
     return spaces + sizeof spaces - 1 - depth * 4;
 }
 
-PyPrinterEntry::PyPrinterEntry(python_printfunc dumpfunc_, bool dupdetect_)
+template<int PyV>
+PyPrinterEntry<PyV>::PyPrinterEntry(python_printfunc<PyV> dumpfunc_, bool dupdetect_)
     : printer(dumpfunc_)
     , dupdetect(dupdetect_)
 {
 }
 
+template<int PyV>
 void
-PythonPrinter::addPrinter(const char *symbol, python_printfunc func, bool dupDetect)
+PythonPrinter<PyV>::addPrinter(const char *symbol, python_printfunc<PyV> func, bool dupDetect)
 {
     Elf::Sym sym;
     if (!libpython->findSymbolByName(symbol, sym, false))
@@ -301,15 +316,17 @@ PythonPrinter::addPrinter(const char *symbol, python_printfunc func, bool dupDet
     printers.emplace(std::piecewise_construct, std::forward_as_tuple(typeptr), std::forward_as_tuple(func, dupDetect));
 }
 
+template<int PyV>
 void
-PythonPrinter::printStacks()
+PythonPrinter<PyV>::printStacks()
 {
     Elf::Addr ptr;
     for (proc.io->readObj(interp_head, &ptr); ptr; )
         ptr = printInterp(ptr);
 }
 
-PythonPrinter::PythonPrinter(Process &proc_, std::ostream &os_, const PstackOptions &options_)
+template <int PyV>
+PythonPrinter<PyV>::PythonPrinter(Process &proc_, std::ostream &os_, const PstackOptions &options_)
     : proc(proc_)
     , os(os_)
     , depth(0)
@@ -376,11 +393,12 @@ PythonPrinter::PythonPrinter(Process &proc_, std::ostream &os_, const PstackOpti
     addPrinter("PyClass_Type", classPrint, false);
     addPrinter("PyList_Type", listPrint, true);
     addPrinter("PyFloat_Type", floatPrint, false);
-    heapPrinter = new PyPrinterEntry(heapPrint, true);
+    heapPrinter = new PyPrinterEntry<PyV>(heapPrint<PyV>, true);
 }
 
+template <int PyV>
 void
-PythonPrinter::print(Elf::Addr remoteAddr)
+PythonPrinter<PyV>::print(Elf::Addr remoteAddr)
 {
 
     if (depth > 10000) {
@@ -396,7 +414,7 @@ PythonPrinter::print(Elf::Addr remoteAddr)
                 os << "(dead object)";
             }
 
-            const PyPrinterEntry *printer = nullptr;
+            const PyPrinterEntry<PyV> *printer = nullptr;
             auto pi = printers.find(Elf::Addr(baseObj.ob_type));
             if (pi != printers.end())
                 printer = &pi->second;
@@ -458,8 +476,9 @@ PythonPrinter::print(Elf::Addr remoteAddr)
  * process one python thread in an interpreter, at remote addr "ptr". 
  * returns the address of the next thread on the list.
  */
+template <int PyV>
 Elf::Addr
-PythonPrinter::printThread(Elf::Addr ptr)
+PythonPrinter<PyV>::printThread(Elf::Addr ptr)
 {
     PyThreadState thread;
     proc.io->readObj(ptr, &thread);
@@ -481,8 +500,9 @@ PythonPrinter::printThread(Elf::Addr ptr)
  * Process one python interpreter in the process at remote address ptr
  * Returns the address of the next interpreter on on the process's list.
  */
+template <int PyV>
 Elf::Addr
-PythonPrinter::printInterp(Elf::Addr ptr)
+PythonPrinter<PyV>::printInterp(Elf::Addr ptr)
 {
     PyInterpreterState state;
     proc.io->readObj(ptr, &state);
@@ -493,3 +513,6 @@ PythonPrinter::printInterp(Elf::Addr ptr)
     }
     return reinterpret_cast<Elf::Addr>(state.next);
 }
+
+template struct PythonPrinter<2>;
+template struct PythonPrinter<3>;
