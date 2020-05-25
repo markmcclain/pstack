@@ -326,7 +326,7 @@ mainExcept(int argc, char *argv[])
                                 << found->name << " 0x" << std::hex << loc
                                 << std::dec <<  " ... size=" << found->sym.st_size
                                 << ", diff=" << p - found->memaddr() << endl;
-#if WITH_PYTHON
+#if 0 && WITH_PYTHON
                         if (doPython) {
                             std::cout << "pyo " << Elf::Addr(loc) << " ";
                             py.print(Elf::Addr(loc) - sizeof (PyObject) +

@@ -53,7 +53,7 @@ if (ZLIB_FOUND)
 endif()
 
 if (PythonLibs_FOUND OR PYTHONLIBS_FOUND)
-   set(pysrc python.cc)
+   set(pysrc python.cc python2.cc)
    add_definitions("-DWITH_PYTHON")
    include_directories(${PYTHON_INCLUDE_DIRS})
 endif()
