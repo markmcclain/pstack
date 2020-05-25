@@ -23,7 +23,7 @@ using python_printfunc = Elf::Addr (*)(const _object *pyo, const _typeobject *, 
 template <int PyV>
 struct PythonPrinter {
     void print(Elf::Addr remoteAddr) const;
-    mutable std::map<Elf::Addr, _typeobject *> types;
+    mutable std::map<Elf::Addr, PyTypeObject> types;
 
     PythonPrinter(Process &proc_, std::ostream &os_, const PstackOptions &);
     const char *prefix() const;
@@ -40,5 +40,6 @@ struct PythonPrinter {
     Elf::Addr libpythonAddr;
     const PstackOptions &options;
     std::map<Elf::Addr, const PythonTypePrinter<PyV> *> printers;
+    void findInterpreter();
 };
 bool pthreadTidOffset(const Process &proc, size_t *offsetp);
