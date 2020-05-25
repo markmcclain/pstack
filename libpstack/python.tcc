@@ -390,10 +390,10 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
 
             const PythonTypePrinter<PyV> *printer = printers.at(Elf::Addr(baseObj.ob_type));
 
-            bool isNew = (types.find(Elf::Addr(baseObj.ob_type)) == types.end());
             auto &pto = types[Elf::Addr(baseObj.ob_type)];
-            if (isNew) {
-                proc.io->readObj(Elf::Addr(Elf::Addr(baseObj.ob_type)), &pto);
+            if (pto == nullptr) {
+                pto.reset((_typeobject *)malloc(sizeof(PyTypeObject)));
+                proc.io->readObj(Elf::Addr(Elf::Addr(baseObj.ob_type)), pto.get());
             }
 
             if (printer == 0) {
@@ -434,7 +434,7 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
             }
             char buf[fullSize];
             proc.io->readObj(remoteAddr, buf, fullSize);
-            remoteAddr = printer->print(this, (const PyObject *)buf, pto, remoteAddr);
+            remoteAddr = printer->print(this, (const PyObject *)buf, pto.get(), remoteAddr);
         }
     }
     catch (...) {

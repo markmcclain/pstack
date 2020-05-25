@@ -23,7 +23,12 @@ using python_printfunc = Elf::Addr (*)(const _object *pyo, const _typeobject *, 
 template <int PyV>
 struct PythonPrinter {
     void print(Elf::Addr remoteAddr) const;
-    mutable std::map<Elf::Addr, PyTypeObject> types;
+    struct freetype {
+        void operator()(_typeobject *to) {
+            free(to);
+        }
+    };
+    mutable std::map<Elf::Addr, std::unique_ptr<_typeobject, freetype>> types;
 
     PythonPrinter(Process &proc_, std::ostream &os_, const PstackOptions &);
     const char *prefix() const;
