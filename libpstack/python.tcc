@@ -338,27 +338,17 @@ PythonPrinter<PyV>::PythonPrinter(Process &proc_, std::ostream &os_, const Pstac
            std::string module = stringify(*o.second->io);
            if (module.find("python") == std::string::npos)
                continue;
-           auto dwarf = proc.imageCache.getDwarf(o.second);
-           if (!dwarf)
-               continue;
-           for (auto u : dwarf->getUnits()) {
-               // For each unit
-               const auto &compile = u->root();
-               if (compile.tag() != Dwarf::DW_TAG_compile_unit)
+           auto image = o.second;
+           auto syms = image->getSymbols(".symtab");
+
+           for (auto sym : syms) {
+               if (sym.second.substr(0, 11) != "interp_head")
                    continue;
-               // Do we have a global variable called interp_head?
-               for (auto var : compile.children()) {
-                   if (var.tag() == Dwarf::DW_TAG_variable && (var.name() == "interp_head" || var.name() == "Py_interp_head")) {
-                       Dwarf::ExpressionStack evalStack;
-                       auto location = var.attribute(Dwarf::DW_AT_location);
-                       if (!location.valid())
-                               throw Exception() << "no DW_AT_location for interpreter";
-                       interp_head = evalStack.eval(proc, location, 0, o.first);
-                       libpython = o.second;
-                       libpythonAddr = o.first;
-                       break;
-                   }
-               }
+               getppid();
+               libpython = o.second;
+               libpythonAddr = o.first;
+               interp_head = libpythonAddr + sym.first.st_value;
+               break;
            }
        }
        if (libpython == nullptr)
