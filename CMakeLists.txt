@@ -53,9 +53,10 @@ if (ZLIB_FOUND)
 endif()
 
 if (PythonLibs_FOUND OR PYTHONLIBS_FOUND)
-   set(pysrc python.cc python2.cc)
+   set(pysrc python.cc python2.cc python3.cc)
    add_definitions("-DWITH_PYTHON")
    include_directories(${PYTHON_INCLUDE_DIRS})
+   include_directories("/usr/include/python3.8")
 endif()
 
 add_library(dwelf ${LIBTYPE} dump.cc dwarf.cc elf.cc reader.cc util.cc

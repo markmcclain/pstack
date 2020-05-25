@@ -66,17 +66,6 @@ template <int PyV> class FloatPrinter : public PythonTypePrinter<PyV> {
     bool dupdetect() const override { return false; }
 };
 
-
-template <int PyV> class BoolPrint : public PythonTypePrinter<PyV> {
-    Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
-        auto pio = (const PyIntObject *)pyo;
-        pc->os << (pio->ob_ival ? "True" : "False");
-        return 0;
-    }
-    const char *type() const override { return "PyBool_Type"; }
-    bool dupdetect() const override { return false; }
-};
-
 template<int PyV> class ModulePrinter : public PythonTypePrinter<PyV> {
     Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *, const PyTypeObject *, Elf::Addr) const override {
         pc->os << "<python module>";
@@ -89,7 +78,7 @@ template<int PyV> class ListPrinter : public PythonTypePrinter<PyV> {
     Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *po, const PyTypeObject *, Elf::Addr) const override {
         auto plo = reinterpret_cast<const PyListObject *>(po);
         pc->os << "list: \n";
-        auto size = std::min(plo->ob_size, Py_ssize_t(100));
+        auto size = std::min(pc->obsize((PyObject *)plo), Py_ssize_t(100));
         PyObject *objects[size];
         pc->proc.io->readObj(Elf::Addr(plo->ob_item), &objects[0], size);
         pc->depth++;
@@ -106,43 +95,6 @@ template<int PyV> class ListPrinter : public PythonTypePrinter<PyV> {
     bool dupdetect() const override { return true; }
 };
 
-
-template<int PyV> class ClassPrinter : public PythonTypePrinter<PyV> {
-    Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *po, const PyTypeObject *, Elf::Addr) const override {
-        auto pco = reinterpret_cast<const PyClassObject *>(po);
-        pc->os << "<class ";
-        pc->print(Elf::Addr(pco->cl_name));
-        pc->os << ">";
-        return 0;
-    };
-    const char *type() const override { return "PyClass_Type"; }
-    bool dupdetect() const override { return true; }
-};
-
-
-template<int PyV> class DictPrinter : public PythonTypePrinter<PyV> {
-    Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
-        PyDictObject *pdo = (PyDictObject *)pyo;
-        if (pdo->ma_used == 0)
-            return 0;
-        for (Py_ssize_t i = 0; i < pdo->ma_mask && i < 50; ++i) {
-            PyDictEntry pde = pc->proc.io->template readObj<PyDictEntry>(Elf::Addr(pdo->ma_table + i));
-            if (pde.me_value == nullptr)
-                continue;
-            if (pde.me_key != nullptr) {
-                pc->os << pc->prefix();
-                pc->print(Elf::Addr(pde.me_key));
-                pc->os << ": ";
-                pc->print(Elf::Addr(pde.me_value));
-                pc->os << "\n";
-            }
-        }
-        return 0;
-    }
-    const char *type() const override { return "PyDict_Type"; }
-    bool dupdetect() const override { return true; }
-};
-
 template <int PyV> class TypePrinter : public PythonTypePrinter<PyV> {
     Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
         auto pto = (const _typeobject *)pyo;
@@ -153,30 +105,11 @@ template <int PyV> class TypePrinter : public PythonTypePrinter<PyV> {
     bool dupdetect() const override { return true; }
 };
 
-template <int PyV> class InstancePrinter : public PythonTypePrinter<PyV> {
-    Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
-        const auto pio = reinterpret_cast<const PyInstanceObject *>(pyo);
-        pc->depth++;
-        pc->os << "\n" << pc->prefix() << "class: ";
-        pc->depth++;
-        pc->print(Elf::Addr(pio->in_class));
-        pc->depth--;
-        pc->os << "\n" << pc->prefix() << "dict: \n";
-        pc->depth++;
-        pc->print(Elf::Addr(pio->in_dict));
-        pc->depth--;
-        pc->depth--;
-        return 0;
-    }
-    const char *type() const override { return "PyInstance_Type"; }
-    bool dupdetect() const override { return true; }
-};
-
 template <int PyV> class LongPrinter : public PythonTypePrinter<PyV> {
     Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
         auto plo = (PyLongObject *)pyo;
         intmax_t value = 0;
-        for (int i = 0; i < plo->ob_size; ++i) {
+        for (int i = 0; i < pc->obsize((PyObject *)plo); ++i) {
             value += intmax_t(plo->ob_digit[i]) << (PyLong_SHIFT * i) ;
         }
         pc->os << value;
@@ -194,7 +127,7 @@ printTupleVars(const PythonPrinter<PyV> *pc, Elf::Addr namesAddr, Elf::Addr valu
 {
     const auto &names = pc->proc.io->template readObj<PyTupleObject>(namesAddr);
 
-    maxvals = std::min(names.ob_size, maxvals);
+    maxvals = std::min(pc->obsize((PyObject *)&names), maxvals);
     if (maxvals == 0)
         return 0;
 
@@ -224,8 +157,8 @@ template <int PyV> class FramePrinter : public PythonTypePrinter<PyV> {
         if (pfo->f_code != 0) {
             const auto &code = pc->proc.io->template readObj<PyCodeObject>(Elf::Addr(pfo->f_code));
             auto lineNo = getLine<PyV>(*pc->proc.io, &code, pfo);
-            auto func = pc->proc.io->readString(Elf::Addr(code.co_name) + offsetof(PyStringObject, ob_sval));
-            auto file = pc->proc.io->readString(Elf::Addr(code.co_filename) + offsetof(PyStringObject, ob_sval));
+            auto func = pc->proc.io->readString(Elf::Addr(code.co_name) + offsetof(PyBytesObject, ob_sval));
+            auto file = pc->proc.io->readString(Elf::Addr(code.co_filename) + offsetof(PyBytesObject, ob_sval));
             pc->os << pc->prefix() << func << " in " << file << ":" << lineNo << "\n";
 
             if (pc->options[PstackOption::doargs]) {
@@ -349,13 +282,9 @@ PythonPrinter<PyV>::PythonPrinter(Process &proc_, std::ostream &os_, const Pstac
     static HeapPrinter<PyV> heapPrinter;
     static StringPrinter<PyV> stringPrinter;
     static FloatPrinter<PyV> floatPrinter;
-    static BoolPrint<PyV> boolPrinter;
     static ModulePrinter<PyV> modulePrinter;
     static ListPrinter<PyV> listPrinter;
-    static ClassPrinter<PyV> classPrinter;
-    static DictPrinter<PyV> dictPrinter;
     static TypePrinter<PyV> typePrinter;
-    static InstancePrinter<PyV> instancePrinter;
     static LongPrinter<PyV> longPrinter;
     static FramePrinter<PyV> framePrinter;
 
@@ -384,16 +313,16 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
     try {
         while (remoteAddr) {
             proc.io->readObj<PyVarObject> (remoteAddr, &baseObj);
-            if (baseObj.ob_refcnt == 0) {
+            if (refcnt((PyObject *)&baseObj) == 0) {
                 os << "(dead object)";
             }
 
-            const PythonTypePrinter<PyV> *printer = printers.at(Elf::Addr(baseObj.ob_type));
+            const PythonTypePrinter<PyV> *printer = printers.at(obtype((PyObject *)&baseObj));
 
-            auto &pto = types[Elf::Addr(baseObj.ob_type)];
+            auto &pto = types[obtype((PyObject *)&baseObj)];
             if (pto == nullptr) {
                 pto.reset((_typeobject *)malloc(sizeof(PyTypeObject)));
-                proc.io->readObj(Elf::Addr(Elf::Addr(baseObj.ob_type)), pto.get());
+                proc.io->readObj(obtype((PyObject *)&baseObj), pto.get());
             }
 
             if (printer == 0) {
@@ -403,10 +332,10 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
                     os << "None";
                     break;
                 } else if (printer == 0 && (pto->tp_flags & Py_TPFLAGS_HEAPTYPE)) {
-                    static HeapPrinter<2> heapPrinter;
+                    static HeapPrinter<PyV> heapPrinter;
                     printer = &heapPrinter;
                 } else {
-                    os <<  remoteAddr << " unprintable-type-" << tn << "@"<< Elf::Addr(baseObj.ob_type);
+                    os <<  remoteAddr << " unprintable-type-" << tn << "@"<< obtype((PyObject *)&baseObj);
                     break;
                 }
             }
@@ -475,12 +404,17 @@ template <int PyV>
 Elf::Addr
 PythonPrinter<PyV>::printInterp(Elf::Addr ptr)
 {
-    PyInterpreterState state;
+    // these are the first two fields in PyInterpreterState - next and tstate_head.
+    struct State {
+        Elf::Addr next;
+        Elf::Addr head;
+    };
+    State state;
     proc.io->readObj(ptr, &state);
     os << "---- interpreter @" << std::hex << ptr << std::dec << " -----" << std::endl ;
-    for (Elf::Addr tsp = reinterpret_cast<Elf::Addr>(state.tstate_head); tsp; ) {
+    for (Elf::Addr tsp = state.head; tsp; ) {
         tsp = printThread(tsp);
         os << std::endl;
     }
-    return reinterpret_cast<Elf::Addr>(state.next);
+    return state.next;
 }
