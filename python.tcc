@@ -78,7 +78,7 @@ template<int PyV> class ListPrinter : public PythonTypePrinter<PyV> {
     Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *po, const PyTypeObject *, Elf::Addr) const override {
         auto plo = reinterpret_cast<const PyListObject *>(po);
         pc->os << "list: \n";
-        auto size = std::min(pc->obsize((PyObject *)plo), Py_ssize_t(100));
+        auto size = std::min(((PyVarObject *)plo)->ob_size, Py_ssize_t(100));
         PyObject *objects[size];
         pc->proc.io->readObj(Elf::Addr(plo->ob_item), &objects[0], size);
         pc->depth++;
@@ -109,7 +109,7 @@ template <int PyV> class LongPrinter : public PythonTypePrinter<PyV> {
     Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
         auto plo = (PyLongObject *)pyo;
         intmax_t value = 0;
-        for (int i = 0; i < pc->obsize((PyObject *)plo); ++i) {
+        for (int i = 0; i < ((PyVarObject *)plo)->ob_size; ++i) {
             value += intmax_t(plo->ob_digit[i]) << (PyLong_SHIFT * i) ;
         }
         pc->os << value;
@@ -127,7 +127,7 @@ printTupleVars(const PythonPrinter<PyV> *pc, Elf::Addr namesAddr, Elf::Addr valu
 {
     const auto &names = pc->proc.io->template readObj<PyTupleObject>(namesAddr);
 
-    maxvals = std::min(pc->obsize((PyObject *)&names), maxvals);
+    maxvals = std::min(((PyVarObject *)&names)->ob_size, maxvals);
     if (maxvals == 0)
         return 0;
 
@@ -230,6 +230,10 @@ PythonPrinter<PyV>::printStacks()
 }
 
 
+template <int PyV> bool PythonPrinter<PyV>::interpFound() const {
+    return true;
+}
+
 template <int PyV> void PythonPrinter<PyV>::findInterpreter() {
 
     // First search the ELF symbol table.
@@ -313,16 +317,16 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
     try {
         while (remoteAddr) {
             proc.io->readObj<PyVarObject> (remoteAddr, &baseObj);
-            if (refcnt((PyObject *)&baseObj) == 0) {
+            if (((PyObject *)&baseObj)->ob_refcnt == 0) {
                 os << "(dead object)";
             }
 
-            const PythonTypePrinter<PyV> *printer = printers.at(obtype((PyObject *)&baseObj));
+            const PythonTypePrinter<PyV> *printer = printers.at((Elf::Addr)((const PyObject *)&baseObj)->ob_type);
 
-            auto &pto = types[obtype((PyObject *)&baseObj)];
+            auto &pto = types[(Elf::Addr)((PyObject *)&baseObj)->ob_type];
             if (pto == nullptr) {
                 pto.reset((_typeobject *)malloc(sizeof(PyTypeObject)));
-                proc.io->readObj(obtype((PyObject *)&baseObj), pto.get());
+                proc.io->readObj((Elf::Addr)((PyObject *)&baseObj)->ob_type, pto.get());
             }
 
             if (printer == 0) {
@@ -335,7 +339,7 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
                     static HeapPrinter<PyV> heapPrinter;
                     printer = &heapPrinter;
                 } else {
-                    os <<  remoteAddr << " unprintable-type-" << tn << "@"<< obtype((PyObject *)&baseObj);
+                    os <<  remoteAddr << " unprintable-type-" << tn << "@"<< ((PyObject *)&baseObj)->ob_type << std::endl;
                     break;
                 }
             }

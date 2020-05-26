@@ -72,24 +72,6 @@ class InstancePrinter : public PythonTypePrinter<2> {
 };
 static InstancePrinter instancePrinter;
 
-template<>
-ssize_t
-PythonPrinter<2>::obsize(const PyObject *pyo) const {
-    return reinterpret_cast<const PyVarObject *>(pyo)->ob_size;
-}
-
-template<>
-ssize_t
-PythonPrinter<2>::refcnt(const PyObject *pyo) const {
-    return pyo->ob_refcnt;
-}
-
-template<>
-Elf::Addr
-PythonPrinter<2>::obtype(const _object *ob) const {
-    return Elf::Addr(ob->ob_type);
-}
-
 class IntPrint : public PythonTypePrinter<2> {
     Elf::Addr print(const PythonPrinter<2> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
         auto pio = (const PyIntObject *)pyo;
@@ -101,6 +83,7 @@ class IntPrint : public PythonTypePrinter<2> {
 
 };
 static IntPrint intPrinter;
-#include "libpstack/python.tcc"
+
+#include "python.tcc"
 
 template struct PythonPrinter<2>;

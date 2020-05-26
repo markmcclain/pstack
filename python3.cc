@@ -17,24 +17,6 @@ class BoolPrinter : public PythonTypePrinter<3> {
 };
 static BoolPrinter boolPrinter;
 
-template<>
-ssize_t
-PythonPrinter<3>::obsize(const PyObject *pyo) const {
-    return reinterpret_cast<const PyVarObject *>(pyo)->ob_size;
-}
+#include "python.tcc"
 
-template<>
-ssize_t
-PythonPrinter<3>::refcnt(const PyObject *pyo) const {
-    return pyo->ob_refcnt;
-}
-
-template<>
-Elf::Addr
-PythonPrinter<3>::obtype(const PyObject *pyo) const {
-    return (Elf::Addr)pyo->ob_type;
-}
-
-
-#include "libpstack/python.tcc"
 template struct PythonPrinter<3>;

@@ -1,7 +1,7 @@
 #include "libpstack/dwarf.h"
 #include "libpstack/proc.h"
 #include "libpstack/ps_callback.h"
-#ifdef WITH_PYTHON
+#if defined(WITH_PYTHON2) || defined(WITH_PYTHON3)
 #include "libpstack/python.h"
 #endif
 
@@ -87,7 +87,9 @@ emain(int argc, char **argv)
     int sleepTime = 0;
     PstackOptions options;
 
+#if defined(WITH_PYTHON2) || defined(WITH_PYTHON3)
     bool python = false;
+#endif
     bool coreOnExit = false;
 
     while ((c = getopt(argc, argv, "F:b:d:CD:hjsVvag:ptz:")) != -1) {
@@ -128,7 +130,7 @@ emain(int argc, char **argv)
             sleepTime = atoi(optarg);
             break;
         case 'p':
-#ifdef WITH_PYTHON
+#if defined(WITH_PYTHON2) or defined(WITH_PYTHON3)
             python = true;
 #else
             std::clog << "no python support compiled in" << std::endl;
@@ -158,10 +160,20 @@ emain(int argc, char **argv)
            try {
                auto doStack = [python, &options] (Process &proc) {
                    proc.load(options);
-#ifdef WITH_PYTHON
+#if defined(WITH_PYTHON3) || defined(WITH_PYTHON2)
                    if (python) {
-                       PythonPrinter<2> printer(proc, std::cout, options);
-                       printer.printStacks();
+#ifdef WITH_PYTHON2
+                       PythonPrinter<2> printer2(proc, std::cout, options);
+                       if (printer2.interpFound()) {
+                           printer2.printStacks();
+                       }
+#endif
+#ifdef WITH_PYTHON3
+                       PythonPrinter<3> printer3(proc, std::cout, options);
+                       if (printer3.interpFound()) {
+                           printer3.printStacks();
+                       }
+#endif
                    } else
 #endif
                        pstack(proc, std::cout, options);

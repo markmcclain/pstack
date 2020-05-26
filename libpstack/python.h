@@ -29,9 +29,6 @@ struct PythonPrinter {
         }
     };
     mutable std::map<Elf::Addr, std::unique_ptr<_typeobject, freetype>> types;
-    ssize_t obsize(const _object *) const; // this should really be PyVarObject, but it's an unnamed struct, so we can't actually forward declare it.
-    ssize_t refcnt(const _object *) const;
-    Elf::Addr obtype(const _object *) const;
 
     PythonPrinter(Process &proc_, std::ostream &os_, const PstackOptions &);
     const char *prefix() const;
@@ -49,5 +46,6 @@ struct PythonPrinter {
     const PstackOptions &options;
     std::map<Elf::Addr, const PythonTypePrinter<PyV> *> printers;
     void findInterpreter();
+    bool interpFound() const; // returns true if the printer could find the interpreter.
 };
 bool pthreadTidOffset(const Process &proc, size_t *offsetp);
