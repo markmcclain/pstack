@@ -231,7 +231,7 @@ PythonPrinter<PyV>::printStacks()
 
 
 template <int PyV> bool PythonPrinter<PyV>::interpFound() const {
-    return true;
+    return interp_head != 0;
 }
 
 template <int PyV> void PythonPrinter<PyV>::findInterpreter() {
@@ -278,6 +278,7 @@ PythonPrinter<PyV>::PythonPrinter(Process &proc_, std::ostream &os_, const Pstac
     : proc(proc_)
     , os(os_)
     , depth(0)
+    , interp_head(0)
     , libpython(nullptr)
     , options(options_)
 {
