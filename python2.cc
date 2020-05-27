@@ -34,7 +34,7 @@ class DictPrinter : public PythonTypePrinter<2> {
         if (pdo->ma_used == 0)
             return 0;
         for (Py_ssize_t i = 0; i < pdo->ma_mask && i < 50; ++i) {
-            PyDictEntry pde = pc->proc.io->template readObj<PyDictEntry>(Elf::Addr(pdo->ma_table + i));
+            PyDictEntry pde = readPyObj<2, PyDictEntry>(*pc->proc.io, Elf::Addr(pdo->ma_table + i));
             if (pde.me_value == nullptr)
                 continue;
             if (pde.me_key != nullptr) {

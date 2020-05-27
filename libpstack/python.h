@@ -4,6 +4,25 @@ template <int PyV> struct PythonPrinter;
 
 struct _object;
 struct _typeobject;
+/*
+ * Because python2 and 3 have the same typenames, but those types are not
+ * binary compatible, we can't create multiple instantiations of things like
+ * readObj<PyType> Instead, we wrap the python types in versioned containers
+ * like these, and read tose containers instead. Within pstack, all access to
+ * python types is done in the scope of a tempate with an int version argument,
+ * and there are separate instantiations for "2" and "3"
+ */
+template <int V, typename T> struct VersionedType {
+    T t;
+};
+
+template <int V, typename T> void readPyObj(const Reader &r, size_t offset, T *ptr, size_t count = 1) {
+    r.readObj<VersionedType<V, T>>(offset, reinterpret_cast<VersionedType<V, T> *>(ptr), count);
+}
+
+template <int V, typename T> T readPyObj(const Reader &r, off_t offset) {
+    return r.readObj<VersionedType<V, T>>(offset).t;
+}
 
 
 template <int V>

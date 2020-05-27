@@ -9,8 +9,8 @@
 template<int PyV> int
 getLine(const Reader &proc, const PyCodeObject *code, const PyFrameObject *frame)
 {
-    PyVarObject lnotab;
-    proc.readObj(Elf::Addr(code->co_lnotab), &lnotab);
+    auto lnotab = readPyObj<PyV, PyVarObject>(proc, Elf::Addr(code->co_lnotab));
+
     unsigned char linedata[lnotab.ob_size];
     proc.readObj(Elf::Addr(code->co_lnotab) + offsetof(PyBytesObject, ob_sval),
             &linedata[0], lnotab.ob_size);
@@ -125,7 +125,7 @@ template <int PyV>
 int
 printTupleVars(const PythonPrinter<PyV> *pc, Elf::Addr namesAddr, Elf::Addr valuesAddr, const char *type, Py_ssize_t maxvals = 1000000)
 {
-    const auto &names = pc->proc.io->template readObj<PyTupleObject>(namesAddr);
+    const auto &names = readPyObj<PyV, PyTupleObject>(*pc->proc.io, namesAddr);
 
     maxvals = std::min(((PyVarObject *)&names)->ob_size, maxvals);
     if (maxvals == 0)
@@ -155,7 +155,7 @@ template <int PyV> class FramePrinter : public PythonTypePrinter<PyV> {
     Elf::Addr print(const PythonPrinter<PyV> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr remoteAddr) const override {
         auto pfo = (const PyFrameObject *)pyo;
         if (pfo->f_code != 0) {
-            const auto &code = pc->proc.io->template readObj<PyCodeObject>(Elf::Addr(pfo->f_code));
+            const auto &code = readPyObj<PyV, PyCodeObject>(*pc->proc.io, Elf::Addr(pfo->f_code));
             auto lineNo = getLine<PyV>(*pc->proc.io, &code, pfo);
             auto func = pc->proc.io->readString(Elf::Addr(code.co_name) + offsetof(PyBytesObject, ob_sval));
             auto file = pc->proc.io->readString(Elf::Addr(code.co_filename) + offsetof(PyBytesObject, ob_sval));
@@ -313,10 +313,9 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
         return;
     }
     depth++;
-    PyVarObject baseObj;
     try {
         while (remoteAddr) {
-            proc.io->readObj<PyVarObject> (remoteAddr, &baseObj);
+            auto baseObj = readPyObj<PyV, PyVarObject>(*proc.io, remoteAddr);
             if (((PyObject *)&baseObj)->ob_refcnt == 0) {
                 os << "(dead object)";
             }
@@ -326,7 +325,9 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
             auto &pto = types[reinterpret_cast<PyObject *>(&baseObj)->ob_type];
             if (pto == nullptr) {
                 pto.reset((_typeobject *)malloc(sizeof(PyTypeObject)));
-                proc.io->readObj((Elf::Addr)reinterpret_cast<PyObject *>(&baseObj)->ob_type, pto.get());
+                readPyObj<PyV, PyTypeObject>(*proc.io,
+                        (Elf::Addr)reinterpret_cast<PyObject *>(&baseObj)->ob_type,
+                        pto.get());
             }
 
             if (printer == 0) {
@@ -384,8 +385,7 @@ template <int PyV>
 Elf::Addr
 PythonPrinter<PyV>::printThread(Elf::Addr ptr)
 {
-    PyThreadState thread;
-    proc.io->readObj(ptr, &thread);
+    auto thread = readPyObj<PyV, PyThreadState>(*proc.io, ptr);
     size_t toff;
     if (thread.thread_id && pthreadTidOffset(proc, &toff)) {
         Elf::Addr tidptr = thread.thread_id + toff;
