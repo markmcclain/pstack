@@ -299,7 +299,7 @@ PythonPrinter<PyV>::PythonPrinter(Process &proc_, std::ostream &os_, const Pstac
 
         if (!libpython->findSymbolByName(ps->type(), sym, true))
             throw Exception() << "failed to find python symbol " << ps->type();
-        printers[libpythonAddr + sym.st_value] = ps;
+        printers[(const _typeobject *)(libpythonAddr + sym.st_value)] = ps;
         std::clog << " found " << ps->type() << " at " << (libpythonAddr + sym.st_value) << std::endl;
     }
 
@@ -321,12 +321,12 @@ PythonPrinter<PyV>::print(Elf::Addr remoteAddr) const {
                 os << "(dead object)";
             }
 
-            const PythonTypePrinter<PyV> *printer = printers.at((Elf::Addr)((const PyObject *)&baseObj)->ob_type);
+            const PythonTypePrinter<PyV> *printer = printers.at(reinterpret_cast<const PyObject *>(&baseObj)->ob_type);
 
-            auto &pto = types[(Elf::Addr)((PyObject *)&baseObj)->ob_type];
+            auto &pto = types[reinterpret_cast<PyObject *>(&baseObj)->ob_type];
             if (pto == nullptr) {
                 pto.reset((_typeobject *)malloc(sizeof(PyTypeObject)));
-                proc.io->readObj((Elf::Addr)((PyObject *)&baseObj)->ob_type, pto.get());
+                proc.io->readObj((Elf::Addr)reinterpret_cast<PyObject *>(&baseObj)->ob_type, pto.get());
             }
 
             if (printer == 0) {
