@@ -178,7 +178,9 @@ emain(int argc, char **argv)
                    if (python && doPy<2>(proc, std::cout, options))
                        return;
 #endif
+                   std::cout << "no py2, will try py3" << std::endl;
 #ifdef WITH_PYTHON3
+                   std::cout << "..." << std::endl;
                    if (python && doPy<3>(proc, std::cout, options))
                        return;
 #endif

@@ -58,6 +58,7 @@ if (Python3_Development_FOUND OR Python2_Development_FOUND)
 endif()
 
 if (Python3_Development_FOUND)
+   message(STATUS  "Python3_INCLUDE_DIRS are ${Python3_INCLUDE_DIRS}")
    set(pysrc ${pysrc} python3.cc)
    add_definitions("-DWITH_PYTHON3")
    include_directories(${Python3_INCLUDE_DIRS})
@@ -66,7 +67,7 @@ endif()
 if (Python2_Development_FOUND)
    set(pysrc ${pysrc} python2.cc)
    add_definitions("-DWITH_PYTHON2")
-   include_directories(${Python3_INCLUDE_DIRS})
+   include_directories(${Python2_INCLUDE_DIRS})
 endif()
 
 add_library(dwelf ${LIBTYPE} dump.cc dwarf.cc elf.cc reader.cc util.cc

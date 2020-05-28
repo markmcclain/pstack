@@ -52,7 +52,7 @@ template <int PyV> class StringPrinter : public PythonTypePrinter<PyV> {
         pc->os << "\"" << pso->ob_sval << "\"";
         return 0;
     }
-    const char *type() const override { return "PyString_Type"; }
+    const char *type() const override { return "PyBytes_Type"; }
     bool dupdetect() const override { return false; }
 };
 
@@ -248,10 +248,11 @@ template <int PyV> void PythonPrinter<PyV>::findInterpreter() {
         if (verbose)
             *debug << "found interp_headp in ELF syms" << std::endl;
         proc.io->readObj(interp_headp, &interp_head);
+        return;
     }
     catch (...) {
-        findInterpHeadFallback();
     }
+    findInterpHeadFallback();
 }
 
 template <int PyV>

@@ -104,7 +104,8 @@ void PythonPrinter<2>::findInterpHeadFallback() {
     }
     if (libpython == nullptr)
         throw Exception() << "No libpython found";
-    std::clog << "python library is " << *libpython->io << std::endl;
+    if (verbose)
+       *debug << "python2 library is " << *libpython->io << std::endl;
 }
 
 #include "python.tcc"
