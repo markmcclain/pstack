@@ -17,6 +17,25 @@ class BoolPrinter : public PythonTypePrinter<3> {
 };
 static BoolPrinter boolPrinter;
 
+template<>
+void PythonPrinter<3>::findInterpHeadFallback() {
+    libpython = nullptr;
+    auto addr = proc.findSymbolByName("_PyRuntime", false);
+    for (auto &o : proc.objects) {
+        std::string module = stringify(*o.second->io);
+        if (module.find("python") == std::string::npos)
+            continue;
+        auto image = o.second;
+
+        Elf::Sym sym;
+        if (!image->findSymbolByName("_PyRuntime", sym, false))
+            return;
+        libpython = image;
+        std::clog << "python library is " << *libpython->io << std::endl;
+    }
+}
+
+
 #include "python.tcc"
 
 template struct PythonPrinter<3>;

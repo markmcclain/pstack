@@ -66,5 +66,6 @@ struct PythonPrinter {
     std::map<const _typeobject *, const PythonTypePrinter<PyV> *> printers;
     void findInterpreter();
     bool interpFound() const; // returns true if the printer could find the interpreter.
+    void findInterpHeadFallback();
 };
 bool pthreadTidOffset(const Process &proc, size_t *offsetp);

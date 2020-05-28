@@ -76,6 +76,19 @@ pstack(Process &proc, std::ostream &os, const PstackOptions &options)
     return os;
 }
 
+template<int V> bool doPy(Process &proc, std::ostream &o, const PstackOptions &options) {
+    try {
+        PythonPrinter<V> printer(proc, o, options);
+        if (!printer.interpFound())
+            return false;
+        printer.printStacks();
+    }
+    catch (...) {
+        return false;
+    }
+    return true;
+}
+
 int
 emain(int argc, char **argv)
 {
@@ -158,23 +171,19 @@ emain(int argc, char **argv)
        for (i = optind; i < argc; i++) {
            pid = atoi(argv[i]);
            try {
-               auto doStack = [python, &options] (Process &proc) {
+               auto doStack = [&python, &options] (Process &proc) {
                    proc.load(options);
 #if defined(WITH_PYTHON3) || defined(WITH_PYTHON2)
-                   if (python) {
 #ifdef WITH_PYTHON2
-                       PythonPrinter<2> printer2(proc, std::cout, options);
-                       if (printer2.interpFound()) {
-                           printer2.printStacks();
-                       }
+                   if (python && doPy<2>(proc, std::cout, options))
+                       return;
 #endif
 #ifdef WITH_PYTHON3
-                       PythonPrinter<3> printer3(proc, std::cout, options);
-                       if (printer3.interpFound()) {
-                           printer3.printStacks();
-                       }
+                   if (python && doPy<3>(proc, std::cout, options))
+                       return;
 #endif
-                   } else
+                   if (python)
+                       return;
 #endif
                        pstack(proc, std::cout, options);
                };

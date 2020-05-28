@@ -238,38 +238,19 @@ template <int PyV> void PythonPrinter<PyV>::findInterpreter() {
 
     // First search the ELF symbol table.
     try {
-       auto interp_headp = proc.findSymbolByName("Py_interp_headp", false,
+        auto interp_headp = proc.findSymbolByName("Py_interp_headp", false,
                 [this](Elf::Addr loadAddr, const Elf::Object::sptr &o) {
-                    libpython = o;
-                    libpythonAddr = loadAddr;
-                    auto name = stringify(*o->io);
-                    return name.find("python") != std::string::npos;
+                libpython = o;
+                libpythonAddr = loadAddr;
+                auto name = stringify(*o->io);
+                return name.find("python") != std::string::npos;
                 });
-       if (verbose)
-          *debug << "found interp_headp in ELF syms" << std::endl;
-       proc.io->readObj(interp_headp, &interp_head);
+        if (verbose)
+            *debug << "found interp_headp in ELF syms" << std::endl;
+        proc.io->readObj(interp_headp, &interp_head);
     }
     catch (...) {
-       libpython = nullptr;
-       for (auto &o : proc.objects) {
-           std::string module = stringify(*o.second->io);
-           if (module.find("python") == std::string::npos)
-               continue;
-           auto image = o.second;
-           auto syms = image->getSymbols(".symtab");
-           for (auto sym : syms) {
-               if (sym.second.substr(0, 11) != "interp_head")
-                   continue;
-               getppid();
-               libpython = o.second;
-               libpythonAddr = o.first;
-               interp_head = libpythonAddr + sym.first.st_value;
-               break;
-           }
-       }
-       if (libpython == nullptr)
-           throw Exception() << "No libpython found";
-       std::clog << "python library is " << *libpython->io << std::endl;
+        findInterpHeadFallback();
     }
 }
 
@@ -283,6 +264,8 @@ PythonPrinter<PyV>::PythonPrinter(Process &proc_, std::ostream &os_, const Pstac
     , options(options_)
 {
     findInterpreter();
+    if (!interpFound())
+        return;
 
     static HeapPrinter<PyV> heapPrinter;
     static StringPrinter<PyV> stringPrinter;
@@ -297,13 +280,10 @@ PythonPrinter<PyV>::PythonPrinter(Process &proc_, std::ostream &os_, const Pstac
         Elf::Sym sym;
         if (ps->type() == nullptr)
             continue; // heapPrinter is used specially.
-
         if (!libpython->findSymbolByName(ps->type(), sym, true))
             throw Exception() << "failed to find python symbol " << ps->type();
         printers[(const _typeobject *)(libpythonAddr + sym.st_value)] = ps;
-        std::clog << " found " << ps->type() << " at " << (libpythonAddr + sym.st_value) << std::endl;
     }
-
 }
 
 template <int PyV>
