@@ -52,7 +52,7 @@ template <int PyV> class StringPrinter : public PythonTypePrinter<PyV> {
         pc->os << "\"" << pso->ob_sval << "\"";
         return 0;
     }
-    const char *type() const override { return "PyBytes_Type"; }
+    const char *type() const override { return PythonTypePrinter<PyV>::pyBytesType; }
     bool dupdetect() const override { return false; }
 };
 

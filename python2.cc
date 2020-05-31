@@ -3,6 +3,8 @@
 #include <python2.7/longintrepr.h>
 #include "libpstack/python.h"
 template<> std::set<const PythonTypePrinter<2> *> PythonTypePrinter<2>::all = std::set<const PythonTypePrinter<2> *>();
+template<>
+char PythonTypePrinter<2>::pyBytesType[] = "PyString_Type";
 
 class BoolPrint : public PythonTypePrinter<2> {
     Elf::Addr print(const PythonPrinter<2> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
@@ -101,6 +103,8 @@ void PythonPrinter<2>::findInterpHeadFallback() {
             interp_head = libpythonAddr + sym.first.st_value;
             break;
         }
+        if (interp_head)
+            break;
     }
     if (libpython == nullptr)
         throw Exception() << "No libpython found";

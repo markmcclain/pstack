@@ -5,6 +5,8 @@
 #include "libpstack/python.h"
 
 template<> std::set<const PythonTypePrinter<3> *> PythonTypePrinter<3>::all = std::set<const PythonTypePrinter<3> *>();
+template <>
+char PythonTypePrinter<3>::pyBytesType[] = "PyBytes_Type";
 
 class BoolPrinter : public PythonTypePrinter<3> {
     Elf::Addr print(const PythonPrinter<3> *pc, const PyObject *pyo, const PyTypeObject *, Elf::Addr) const override {
@@ -81,7 +83,7 @@ WANT THIS-> PyInterpreterState *head;
 
     } _PyRuntimeState;
 #endif
-    interp_head = addr + sizeof(int) * 3 + sizeof(void *)*2;
+    interp_head = addr + sizeof(int) * 4  + sizeof(void *)*2;
     if (verbose)
        *debug << "python library is " << *libpython->io
           << ", _PyRuntime at " << addr

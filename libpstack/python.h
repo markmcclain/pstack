@@ -28,6 +28,7 @@ template <int V, typename T> T readPyObj(const Reader &r, off_t offset) {
 template <int V>
 class PythonTypePrinter {
 public:
+    static char pyBytesType[];
     virtual Elf::Addr print(const PythonPrinter<V> *, const _object *, const _typeobject *, Elf::Addr addr) const = 0;
     virtual bool dupdetect() const { return true; }
     virtual const char * type() const = 0;
