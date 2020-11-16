@@ -7,6 +7,7 @@ def JSON(cmd, childfunc = None):
     cm = coremonitor.CoreMonitor( cmd, childfunc )
     args = ["./pstack", "-j" ]
     if childfunc:
+        print("sys.executable is %s" % sys.executable)
         args.append(sys.executable)
     args.append(cm.core())
     text = subprocess.check_output(args)

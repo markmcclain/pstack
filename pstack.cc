@@ -108,17 +108,20 @@ emain(int argc, char **argv)
 #endif
     bool coreOnExit = false;
 
-    while ((c = getopt(argc, argv, "F:b:d:CD:hjsVvag:ptz:")) != -1) {
+    while ((c = getopt(argc, argv, "F:b:d:CD:M:hjsVvag:ptz:")) != -1) {
         switch (c) {
         case 'F': g_openPrefix = optarg;
                   break;
         case 'g':
             Elf::globalDebugDirectories.add(optarg);
             break;
-        case 'D': {
+        case 'M': case 'D': {
             auto dumpobj = std::make_shared<Elf::Object>(imageCache, loadFile(optarg));
             auto di = std::make_shared<Dwarf::Info>(dumpobj, imageCache);
-            std::cout << json(*di);
+            if (c == 'D')
+                std::cout << json(*di);
+            else
+                std::cout << json(di->macros);
             goto done;
         }
         case 'z':

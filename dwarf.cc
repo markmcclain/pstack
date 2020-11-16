@@ -181,8 +181,10 @@ Info::Info(Elf::Object::sptr obj, ImageCache &cache_)
     , pubnamesh(sectionReader(*obj, ".debug_pubnames", ".zdebug_pubnames"))
     , arangesh(sectionReader(*obj, ".debug_aranges", ".zdebug_aranges"))
     , rangesh(sectionReader(*obj, ".debug_ranges", ".zdebug_ranges"))
+    , macrosh(sectionReader(*obj, ".debug_macros", ".zdebug_macros"))
     , haveLines(bool(lineshdr))
     , haveARanges(bool(arangesh))
+    , macros(macrosh)
 {
     auto f = [this, &obj](const char *name, const char *zname, FIType ftype) {
         const Elf::Section *sec;

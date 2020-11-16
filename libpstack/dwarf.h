@@ -441,6 +441,11 @@ struct ARanges {
     std::map<Elf::Addr, std::pair<Elf::Addr, off_t>> ranges;
 };
 
+struct Macros {
+    Reader::csptr io;
+    Macros(Reader::csptr io_): io(io_) {}
+};
+
 class ImageCache;
 /*
  * Info represents all the interesting bits of the DWARF data.
@@ -486,10 +491,13 @@ private:
     mutable Reader::csptr pubnamesh;
     mutable Reader::csptr arangesh;
     mutable Reader::csptr rangesh;
+    mutable Reader::csptr macrosh;
     mutable ARanges aranges; // maps starting address to length + unit offset.
     bool haveLines;
     bool haveARanges;
     mutable bool unitRangesCached = false;
+public:
+    Macros macros;
 };
 
 /*
@@ -695,6 +703,7 @@ enum ExpressionOp {
 #define DW_EH_PE_aligned        0x50
 }
 std::ostream &operator << (std::ostream &os, const JSON<Dwarf::Info> &);
+std::ostream &operator << (std::ostream &os, const JSON<Dwarf::Macros> &);
 std::ostream &operator << (std::ostream &os, const JSON<Dwarf::UnitType> &);
 
 #endif

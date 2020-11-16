@@ -502,6 +502,37 @@ operator << (std::ostream &os, const JSON<Dwarf::Info> &di)
     return writer;
 }
 
+std::ostream &
+operator << (std::ostream &os, const JSON<Dwarf::Macros> &mi)
+{
+    JObject writer(os);
+    Dwarf::DWARFReader dr(mi.object.io);
+
+    auto version = dr.getu16();
+    auto flags = dr.getu8();
+    auto offset_size_flag = flags & (1<<0);
+    auto debug_line_offset_flag = flags & (1<<1);
+    auto opcode_operands_table_flag = flags & (1<<2);
+
+    uint64_t debug_line_offset = 0;
+    uint8_t opcode_operand_table_count = 0;
+    if (debug_line_offset_flag)
+        debug_line_offset = dr.getuint(ELF_BYTES);
+    if (opcode_operands_table_flag) {
+        opcode_operand_table_count = dr.getu8();
+        for (uint8_t i = 0; i < opcode_operand_table_count; ++i) {
+            uint8_t opcode = dr.getu8();
+            auto opcount = dr.getuleb128();
+            for (uint8_t j = 0; j < opcount; ++j) {
+                auto form = dr.getu8();
+                os << "form: " << form << std::endl;
+            }
+        }
+    }
+
+    return os;
+}
+
 std::ostream &operator << (std::ostream &os, const JSON<Elf::NoteDesc> &note)
 {
     JObject writer(os);
