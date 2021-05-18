@@ -543,7 +543,6 @@ Attribute::operator Ranges() const
             switch (entryType) {
                 case DW_RLE_end_of_list:
                     done = true;
-                    std::clog << "read " << ranges.size() << " ranges from " << *dieref.unit->dwarf->elf->io << "\n";
                     break;
 
                 case DW_RLE_base_addressx: {
